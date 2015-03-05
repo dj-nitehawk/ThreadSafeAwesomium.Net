@@ -155,7 +155,7 @@ Public Class Browser
             Task.Delay(100).Wait()
         Loop
 
-        If String.IsNullOrEmpty(RenderedHTML) Then
+        If String.IsNullOrEmpty(RenderedHTML) Or RenderedHTML.Equals("undefined", StringComparison.OrdinalIgnoreCase) Then
             Throw New Exception("Rendering failed!")
         End If
 
