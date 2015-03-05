@@ -72,7 +72,9 @@ Public Class Browser
 
     Private Sub SetNewSession()
         If Not IsNothing(Session) Then
-            Session.Dispose()
+            WebCore.QueueWork(Sub()
+                                  Session.Dispose()
+                              End Sub)
             Session = Nothing
         End If
         Session = WebCore.DoWork(Function() As WebSession
@@ -92,7 +94,9 @@ Public Class Browser
         If Not IsNothing(View) Then
             RemoveHandler View.LoadingFrameComplete, Nothing
             RemoveHandler View.LoadingFrameFailed, Nothing
-            View.Dispose()
+            WebCore.QueueWork(Sub()
+                                  View.Dispose()
+                              End Sub)
             View = Nothing
         End If
         View = WebCore.DoWork(Function() As WebView
@@ -125,7 +129,11 @@ Public Class Browser
             Task.Delay(100).Wait()
         Loop
 
-        If Date.UtcNow.Subtract(CreationTime).TotalMinutes >= 60 Then
+        Dim ViewIsAlive As Boolean = View.Invoke(Function() As Boolean
+                                                     Return View.IsLive
+                                                 End Function)
+
+        If (Date.UtcNow.Subtract(CreationTime).TotalMinutes >= 60) Or (Not ViewIsAlive) Then
             SetNewSession()
             SetNewView()
             CreationTime = Date.UtcNow
@@ -139,6 +147,9 @@ Public Class Browser
         Dim startTime As Date = Date.UtcNow
         Do Until RenderingDone = True
             If Date.UtcNow.Subtract(startTime).TotalSeconds >= 15 Then
+                View.Invoke(Sub()
+                                View.Stop()
+                            End Sub)
                 Exit Do
             End If
             Task.Delay(100).Wait()
