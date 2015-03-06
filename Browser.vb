@@ -30,21 +30,24 @@ Public Class Browser
     Dim CreationTime As Date
 
     Private Shared Sub AwesomiumThread()
-        WebCore.Initialize(New WebConfig With {.LogLevel = LogLevel.None}, False)
-        WebCore.Run(Sub(s, e)
-                        WebCore.ResourceInterceptor = New Interceptor()
-                        CoreIsRunning = True
-                    End Sub)
+        If WebCore.IsInitialized = False And CoreIsRunning = False Then
+            WebCore.Initialize(New WebConfig With {.LogLevel = LogLevel.None}, False)
+            WebCore.Run(Sub(s, e)
+                            WebCore.ResourceInterceptor = New Interceptor()
+                            CoreIsRunning = True
+                        End Sub)
+        End If
     End Sub
 
     ''' <summary>
     ''' Call this to shutdown the dedicated awesomium thread and destroy any WebViews created by the WebCore.
     ''' Call it when your app is closing.
+    ''' Once, shutdown, app restart is needed to use WebCore again.
     ''' </summary>
     Shared Sub StopWebCore()
         WebCore.Shutdown()
         Thread = Nothing
-        CoreIsRunning = Nothing
+        CoreIsRunning = False
     End Sub
 
     ''' <summary>
@@ -52,7 +55,7 @@ Public Class Browser
     ''' You can call this on app start but it's not needed as it will be called automatically when you create an instance of this class.
     ''' </summary>
     Shared Sub StartWebCore()
-        If Not WebCore.IsInitialized And IsNothing(Thread) Then
+        If WebCore.IsInitialized = False And CoreIsRunning = False And IsNothing(Thread) Then
             Thread = New Threading.Thread(AddressOf AwesomiumThread)
             Thread.Start()
         End If
@@ -62,7 +65,6 @@ Public Class Browser
     ''' Create a new Browser class.
     ''' Don't forget to either use a USING statement or call DISPOSE after use.
     ''' </summary>
-
     Sub New()
         StartWebCore()
         SetNewSession()
@@ -72,9 +74,12 @@ Public Class Browser
 
     Private Sub SetNewSession()
         If Not IsNothing(Session) Then
-            WebCore.QueueWork(Sub()
-                                  Session.Dispose()
-                              End Sub)
+            WebCore.DoWork(Function()
+                               If Not IsNothing(Session) Then
+                                   Session.Dispose()
+                               End If
+                               Return Nothing
+                           End Function)
             Session = Nothing
         End If
         Session = WebCore.DoWork(Function() As WebSession
@@ -94,9 +99,12 @@ Public Class Browser
         If Not IsNothing(View) Then
             RemoveHandler View.LoadingFrameComplete, Nothing
             RemoveHandler View.LoadingFrameFailed, Nothing
-            WebCore.QueueWork(Sub()
-                                  View.Dispose()
-                              End Sub)
+            WebCore.DoWork(Function()
+                               If Not IsNothing(View) Then
+                                   View.Dispose()
+                               End If
+                               Return Nothing
+                           End Function)
             View = Nothing
         End If
         View = WebCore.DoWork(Function() As WebView
@@ -105,12 +113,16 @@ Public Class Browser
                                                                Session,
                                                                WebViewType.Offscreen)
                               End Function)
-        AddHandler View.LoadingFrameComplete, Sub(s, e)
-                                                  If e.IsMainFrame Then
-                                                      RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
-                                                      RenderingDone = True
-                                                  End If
-                                              End Sub
+        AddHandler View.DocumentReady, Sub(s, e)
+                                           If RenderingDone Then
+                                               Exit Sub
+                                           End If
+                                           If Not IsNothing(View) Then
+                                               Debug.WriteLine("DOM READY: " + View.Source.ToString)
+                                               RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
+                                               RenderingDone = True
+                                           End If
+                                       End Sub
         AddHandler View.LoadingFrameFailed, Sub(s, e)
                                                 If e.IsMainFrame Then
                                                     RenderedHTML = ""
@@ -141,21 +153,29 @@ Public Class Browser
 
         RenderingDone = False
         View.Invoke(Sub()
+                        Do Until View.IsLive
+                            Task.Delay(100).Wait()
+                        Loop
+                        Debug.WriteLine("INVOKING: " + URL)
                         View.Source = URL.ToUri
                     End Sub)
 
         Dim startTime As Date = Date.UtcNow
         Do Until RenderingDone = True
-            If Date.UtcNow.Subtract(startTime).TotalSeconds >= 15 Then
+            If Date.UtcNow.Subtract(startTime).TotalSeconds >= 20 Then
                 View.Invoke(Sub()
                                 View.Stop()
                             End Sub)
+                Debug.WriteLine("TERMINATING: " + URL)
                 Exit Do
             End If
-            Task.Delay(100).Wait()
+            Task.Delay(3000).Wait()
         Loop
 
+        Debug.WriteLine("RENDER DONE: " + URL)
+
         If String.IsNullOrEmpty(RenderedHTML) Or RenderedHTML.Equals("undefined", StringComparison.OrdinalIgnoreCase) Then
+            Debug.WriteLine("RENDER OUTPUT NULL: " + URL)
             Throw New Exception("Rendering failed!")
         End If
 
@@ -169,10 +189,21 @@ Public Class Browser
             If disposing Then
                 RemoveHandler View.LoadingFrameComplete, Nothing
                 RemoveHandler View.LoadingFrameFailed, Nothing
-                WebCore.QueueWork(Sub()
-                                      View.Dispose()
-                                      Session.Dispose()
-                                  End Sub)
+                WebCore.DoWork(Function()
+                                   If Not IsNothing(View) Then
+                                       View.Dispose()
+                                       Do Until View.IsDisposed
+                                           Task.Delay(100).Wait()
+                                       Loop
+                                   End If
+                                   Return Nothing
+                               End Function)
+                WebCore.DoWork(Function()
+                                   If Not IsNothing(Session) Then
+                                       Session.Dispose()
+                                   End If
+                                   Return Nothing
+                               End Function)
             End If
             View = Nothing
             Session = Nothing
