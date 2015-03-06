@@ -99,6 +99,7 @@ Public Class Browser
         If Not IsNothing(View) Then
             RemoveHandler View.LoadingFrameComplete, Nothing
             RemoveHandler View.LoadingFrameFailed, Nothing
+            RemoveHandler View.DocumentReady, Nothing
             WebCore.DoWork(Function()
                                If Not IsNothing(View) Then
                                    View.Dispose()
@@ -113,16 +114,18 @@ Public Class Browser
                                                                Session,
                                                                WebViewType.Offscreen)
                               End Function)
+
         AddHandler View.DocumentReady, Sub(s, e)
-                                           If RenderingDone Then
-                                               Exit Sub
-                                           End If
-                                           If Not IsNothing(View) Then
-                                               Debug.WriteLine("DOM READY: " + View.Source.ToString)
-                                               RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
-                                               RenderingDone = True
-                                           End If
+                                           Debug.WriteLine("DOM READY: " + View.Source.ToString)
+                                           RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
                                        End Sub
+
+        AddHandler View.LoadingFrameComplete, Sub(s, e)
+                                                  If e.IsMainFrame Then
+                                                      RenderingDone = True
+                                                  End If
+                                              End Sub
+
         AddHandler View.LoadingFrameFailed, Sub(s, e)
                                                 If e.IsMainFrame Then
                                                     RenderedHTML = ""
@@ -189,6 +192,7 @@ Public Class Browser
             If disposing Then
                 RemoveHandler View.LoadingFrameComplete, Nothing
                 RemoveHandler View.LoadingFrameFailed, Nothing
+                RemoveHandler View.DocumentReady, Nothing
                 WebCore.DoWork(Function()
                                    If Not IsNothing(View) Then
                                        View.Dispose()
