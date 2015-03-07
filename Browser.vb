@@ -135,6 +135,13 @@ Public Class Browser
                                                     RenderingDone = True
                                                 End If
                                             End Sub
+
+        'AddHandler View.CertificateError, Sub(s, e)
+        '                                      If e.IsOverridable Then
+        '                                          e.Handled = EventHandling.Modal
+        '                                          e.Ignore = True
+        '                                      End If
+        '                                  End Sub
     End Sub
 
     ''' <summary>
@@ -178,12 +185,13 @@ Public Class Browser
         'Dim doc As New HtmlAgilityPack.HtmlDocument()
         'doc.LoadHtml(RenderedHTML)
         'Dim body As HtmlNode = doc.DocumentNode.SelectSingleNode("//*[name() = 'body']")
-        'If Not IsNothing(body) Then
-        '    If String.IsNullOrEmpty(body.InnerHtml) Then
-        '        Throw New Exception("Empty body content!")
-        '    End If
-        'Else
+        'If IsNothing(body) Then
+        '    Debug.WriteLine("NO BODY TAG: " + URL)
         '    Throw New Exception("No body tag found!")
+        'End If
+        'If String.IsNullOrWhiteSpace(body.InnerHtml) Then
+        '    Debug.WriteLine("EMPTY BODY: " + URL)
+        '    Throw New Exception("Empty body content!")
         'End If
 
         Return RenderedHTML
