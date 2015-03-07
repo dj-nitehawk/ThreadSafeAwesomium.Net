@@ -165,7 +165,7 @@ Public Class Browser
                 Debug.WriteLine("TERMINATING: " + URL)
                 Exit Do
             End If
-            Task.Delay(3000).Wait()
+            Task.Delay(300).Wait()
         Loop
 
         Debug.WriteLine("RENDER DONE: " + URL)
