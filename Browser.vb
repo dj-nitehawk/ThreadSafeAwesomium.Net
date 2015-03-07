@@ -1,5 +1,5 @@
 ﻿Imports Awesomium.Core
-
+'Imports HtmlAgilityPack
 Public Class Browser
     Implements IDisposable
 
@@ -119,7 +119,7 @@ Public Class Browser
 
         AddHandler View.DocumentReady, Sub(s, e)
                                            Debug.WriteLine("DOM READY: " + View.Source.ToString)
-                                           View.ExecuteJavascript("var element = document.getElementsByTagName('video'); for (index = element.length - 1; index >= 0; index--) { element[index].parentNode.removeChild(element[index]);}")
+                                           'View.ExecuteJavascript("var element = document.getElementsByTagName('video'); for (index = element.length - 1; index >= 0; index--) { element[index].parentNode.removeChild(element[index]);}")
                                            RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
                                        End Sub
 
@@ -165,7 +165,7 @@ Public Class Browser
                 Debug.WriteLine("TERMINATING: " + URL)
                 Exit Do
             End If
-            Task.Delay(300).Wait()
+            Task.Delay(1000).Wait()
         Loop
 
         Debug.WriteLine("RENDER DONE: " + URL)
@@ -174,6 +174,17 @@ Public Class Browser
             Debug.WriteLine("RENDER OUTPUT NULL: " + URL)
             Throw New Exception("Rendering failed!")
         End If
+
+        'Dim doc As New HtmlAgilityPack.HtmlDocument()
+        'doc.LoadHtml(RenderedHTML)
+        'Dim body As HtmlNode = doc.DocumentNode.SelectSingleNode("//*[name() = 'body']")
+        'If Not IsNothing(body) Then
+        '    If String.IsNullOrEmpty(body.InnerHtml) Then
+        '        Throw New Exception("Empty body content!")
+        '    End If
+        'Else
+        '    Throw New Exception("No body tag found!")
+        'End If
 
         Return RenderedHTML
     End Function
