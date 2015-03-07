@@ -27,7 +27,6 @@ Public Class Browser
     Dim RenderingDone As Boolean = False
     Dim Session As WebSession
     Dim View As WebView
-    Dim CreationTime As Date
 
     Private Shared Sub AwesomiumThread()
         If WebCore.IsInitialized = False And CoreIsRunning = False Then
@@ -61,6 +60,10 @@ Public Class Browser
         End If
     End Sub
 
+    Shared Sub ReduceWebCoreMemory()
+        WebCore.ReleaseMemory()
+    End Sub
+
     ''' <summary>
     ''' Create a new Browser class.
     ''' Don't forget to either use a USING statement or call DISPOSE after use.
@@ -69,7 +72,6 @@ Public Class Browser
         StartWebCore()
         SetNewSession()
         SetNewView()
-        CreationTime = Date.UtcNow
     End Sub
 
     Private Sub SetNewSession()
@@ -117,6 +119,7 @@ Public Class Browser
 
         AddHandler View.DocumentReady, Sub(s, e)
                                            Debug.WriteLine("DOM READY: " + View.Source.ToString)
+                                           View.ExecuteJavascript("var element = document.getElementsByTagName('video'); for (index = element.length - 1; index >= 0; index--) { element[index].parentNode.removeChild(element[index]);}")
                                            RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
                                        End Sub
 
@@ -144,16 +147,6 @@ Public Class Browser
             Task.Delay(100).Wait()
         Loop
 
-        Dim ViewIsAlive As Boolean = View.Invoke(Function() As Boolean
-                                                     Return View.IsLive
-                                                 End Function)
-
-        If (Date.UtcNow.Subtract(CreationTime).TotalMinutes >= 60) Or (Not ViewIsAlive) Then
-            SetNewSession()
-            SetNewView()
-            CreationTime = Date.UtcNow
-        End If
-
         RenderingDone = False
         View.Invoke(Sub()
                         Do Until View.IsLive
@@ -165,7 +158,7 @@ Public Class Browser
 
         Dim startTime As Date = Date.UtcNow
         Do Until RenderingDone = True
-            If Date.UtcNow.Subtract(startTime).TotalSeconds >= 20 Then
+            If Date.UtcNow.Subtract(startTime).TotalSeconds >= 15 Then
                 View.Invoke(Sub()
                                 View.Stop()
                             End Sub)
@@ -199,21 +192,20 @@ Public Class Browser
                                        Do Until View.IsDisposed
                                            Task.Delay(100).Wait()
                                        Loop
+                                       View = Nothing
                                    End If
                                    Return Nothing
                                End Function)
                 WebCore.DoWork(Function()
                                    If Not IsNothing(Session) Then
                                        Session.Dispose()
+                                       Session = Nothing
                                    End If
                                    Return Nothing
                                End Function)
             End If
-            View = Nothing
-            Session = Nothing
             RenderedHTML = Nothing
             RenderingDone = Nothing
-            CreationTime = Nothing
         End If
         Me.disposedValue = True
     End Sub
