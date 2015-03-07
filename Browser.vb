@@ -93,13 +93,13 @@ Public Class Browser
                                              .RemoteFonts = False,
                                              .WebAudio = False,
                                              .CanScriptsOpenWindows = False,
-                                             .DefaultEncoding = "utf-8"})
+                                             .DefaultEncoding = "utf-8",
+                                             .UserScript = "var src = ''; document.addEventListener('DOMContentLoaded', function () { var element = document.getElementsByTagName('video'); for (index = element.length - 1; index >= 0; index--) { element[index].parentNode.removeChild(element[index]); }; }, false); document.onreadystatechange = function () { if (document.readyState == 'complete') { src = document.documentElement.outerHTML; }; };"})
                                  End Function)
     End Sub
 
     Private Sub SetNewView()
         If Not IsNothing(View) Then
-            RemoveHandler View.LoadingFrameComplete, Nothing
             RemoveHandler View.LoadingFrameFailed, Nothing
             RemoveHandler View.DocumentReady, Nothing
             WebCore.DoWork(Function()
@@ -118,16 +118,13 @@ Public Class Browser
                               End Function)
 
         AddHandler View.DocumentReady, Sub(s, e)
-                                           Debug.WriteLine("DOM READY: " + View.Source.ToString)
-                                           'View.ExecuteJavascript("var element = document.getElementsByTagName('video'); for (index = element.length - 1; index >= 0; index--) { element[index].parentNode.removeChild(element[index]);}")
-                                           RenderedHTML = View.ExecuteJavascriptWithResult("document.documentElement.outerHTML").ToString
+                                           Task.Delay(300).Wait()
+                                           RenderedHTML = View.ExecuteJavascriptWithResult("src;").ToString
+                                           If Not String.IsNullOrEmpty(RenderedHTML) Then
+                                               Debug.WriteLine("SRC READY: " + View.Source.ToString)
+                                               RenderingDone = True
+                                           End If
                                        End Sub
-
-        AddHandler View.LoadingFrameComplete, Sub(s, e)
-                                                  If e.IsMainFrame Then
-                                                      RenderingDone = True
-                                                  End If
-                                              End Sub
 
         AddHandler View.LoadingFrameFailed, Sub(s, e)
                                                 If e.IsMainFrame Then
@@ -135,13 +132,6 @@ Public Class Browser
                                                     RenderingDone = True
                                                 End If
                                             End Sub
-
-        'AddHandler View.CertificateError, Sub(s, e)
-        '                                      If e.IsOverridable Then
-        '                                          e.Handled = EventHandling.Modal
-        '                                          e.Ignore = True
-        '                                      End If
-        '                                  End Sub
     End Sub
 
     ''' <summary>
@@ -172,7 +162,7 @@ Public Class Browser
                 Debug.WriteLine("TERMINATING: " + URL)
                 Exit Do
             End If
-            Task.Delay(1000).Wait()
+            Task.Delay(300).Wait()
         Loop
 
         Debug.WriteLine("RENDER DONE: " + URL)
@@ -202,7 +192,6 @@ Public Class Browser
     Protected Overridable Sub Dispose(disposing As Boolean)
         If Not Me.disposedValue Then
             If disposing Then
-                RemoveHandler View.LoadingFrameComplete, Nothing
                 RemoveHandler View.LoadingFrameFailed, Nothing
                 RemoveHandler View.DocumentReady, Nothing
                 WebCore.DoWork(Function()
