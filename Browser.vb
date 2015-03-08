@@ -95,6 +95,7 @@ Public Class Browser
                                              .CanScriptsOpenWindows = False,
                                              .DefaultEncoding = "utf-8",
                                              .UserScript = "var src = ''; document.addEventListener('DOMContentLoaded', function () { var element = document.getElementsByTagName('video'); for (index = element.length - 1; index >= 0; index--) { element[index].parentNode.removeChild(element[index]); }; }, false); document.onreadystatechange = function () { if (document.readyState == 'complete') { src = document.documentElement.outerHTML; }; };"})
+                                     '                     NOTE: the above javascript code removes "<video>" tags in the source so they don't start auto playing. You will have to modify that code if you want video support. 
                                  End Function)
     End Sub
 
