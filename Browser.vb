@@ -1,5 +1,6 @@
 ﻿Imports Awesomium.Core
 'Imports HtmlAgilityPack
+
 Public Class Browser
     Implements IDisposable
 
@@ -94,39 +95,29 @@ Public Class Browser
                                              .WebAudio = False,
                                              .CanScriptsOpenWindows = False,
                                              .DefaultEncoding = "utf-8",
-                                             .UserScript = "function SetAndFire(){src=document.documentElement.outerHTML;var e=document.createEvent('Event');e.initEvent('DOMContentLoaded',!0,!0),window.document.dispatchEvent(e)}var src='';document.addEventListener('DOMContentLoaded',function(){var e=document.getElementsByTagName('video');for(index=e.length-1;index>=0;index--)e[index].parentNode.removeChild(e[index])},!1),document.onreadystatechange=function(){'complete'==document.readyState&&SetAndFire()},window.onload=function(){SetAndFire()};"})
+                                             .UserScript = "function SetAndFire(){src=document.documentElement.outerHTML;var e=document.createEvent('Event');e.initEvent('DOMContentLoaded',!0,!0),window.document.dispatchEvent(e)}function RemoveVideos(){var e=document.getElementsByTagName('video');for(index=e.length-1;index>=0;index--)e[index].parentNode.removeChild(e[index])}var src='';window.addEventListener&&(window.addEventListener('DOMContentLoaded',RemoveVideos,!1),window.addEventListener('load',SetAndFire,!1));"})
 
                                      'var src = '';
 
                                      'function SetAndFire() {
-
                                      '    src = document.documentElement.outerHTML;
-
                                      '    var DOMContentLoaded_event = document.createEvent('Event');
                                      '    DOMContentLoaded_event.initEvent('DOMContentLoaded', true, true);
                                      '    window.document.dispatchEvent(DOMContentLoaded_event);
                                      '};
 
-                                     'document.addEventListener('DOMContentLoaded', function() {
-
+                                     'function RemoveVideos() {
                                      '    var element = document.getElementsByTagName('video');
-
                                      '    for (index = element.length - 1; index >= 0; index--) {
                                      '        element[index].parentNode.removeChild(element[index]);
                                      '    };
-
-                                     '}, false);
-
-                                     'document.onreadystatechange = function() {
-
-                                     '    if (document.readyState == 'complete') {
-                                     '        SetAndFire();
-                                     '    };
                                      '};
 
-                                     'window.onload = function() {
-                                     '    SetAndFire();
+                                     'if (window.addEventListener) {
+                                     '    window.addEventListener('DOMContentLoaded', RemoveVideos, false);
+                                     '    window.addEventListener("load", SetAndFire, false);
                                      '};
+
                                  End Function)
     End Sub
 
@@ -151,8 +142,7 @@ Public Class Browser
 
         AddHandler View.DocumentReady, Sub(s, e)
                                            If Not RenderingDone Then
-                                               Task.Delay(300).Wait()
-                                               RenderedHTML = View.ExecuteJavascriptWithResult("src;").ToString
+                                               RenderedHTML = View.ExecuteJavascriptWithResult("src").ToString
                                                If Not String.IsNullOrEmpty(RenderedHTML) Then
                                                    Debug.WriteLine("SRC READY: " + View.Source.ToString)
                                                    RenderingDone = True
