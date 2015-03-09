@@ -4,20 +4,19 @@
 
         Browser.StartWebCore()
 
-        Dim sw As New Stopwatch
-        sw.Start()
-
         Using A As New Browser()
 
-            Console.WriteLine(A.GetRenderedHTML("http://www.kimsufi.com/uk/"))
+            Dim sw As New Stopwatch
+            sw.Start()
+            Console.WriteLine(A.GetRenderedHTML("http://google.com"))
             Console.WriteLine("Time Taken: " + sw.Elapsed.TotalSeconds.ToString("0"))
-
-            sw.Restart()
-
-            Console.WriteLine(A.GetRenderedHTML("http://cnn.com"))
-            Console.WriteLine("Time Taken: " + sw.Elapsed.TotalSeconds.ToString("0"))
-
             Console.ReadLine()
+            sw.Reset()
+            sw.Start()
+            Console.WriteLine(A.GetRenderedHTML("http://www.amazon.com/dp/B00LF10KNA"))
+            Console.WriteLine("Time Taken: " + sw.Elapsed.TotalSeconds.ToString("0"))
+            Console.ReadLine()
+            sw.Stop()
 
         End Using
 

@@ -28,6 +28,7 @@ Public Class Browser
     Dim RenderingDone As Boolean = False
     Dim Session As WebSession
     Dim View As WebView
+    Dim jsOBJ As JSObject
 
     Private Shared Sub AwesomiumThread()
         If WebCore.IsInitialized = False And CoreIsRunning = False Then
@@ -95,15 +96,12 @@ Public Class Browser
                                              .WebAudio = False,
                                              .CanScriptsOpenWindows = False,
                                              .DefaultEncoding = "utf-8",
-                                             .UserScript = "function SetAndFire(){src=document.documentElement.outerHTML;var e=document.createEvent('Event');e.initEvent('DOMContentLoaded',!0,!0),window.document.dispatchEvent(e)}function RemoveVideos(){var e=document.getElementsByTagName('video');for(index=e.length-1;index>=0;index--)e[index].parentNode.removeChild(e[index])}var src='';window.addEventListener&&(window.addEventListener('DOMContentLoaded',RemoveVideos,!1),window.addEventListener('load',SetAndFire,!1));"})
+                                             .UserScript = "function SetSRC(){SRC=document.documentElement.outerHTML}function RemoveVideos(){var e=document.getElementsByTagName('video');for(index=e.length-1;index>=0;index--)e[index].parentNode.removeChild(e[index])}SRC='',window.addEventListener&&(window.addEventListener('DOMContentLoaded',RemoveVideos,!1),window.addEventListener('load',SetSRC,!1)),setTimeout(function(){jsOBJ.SendSRC(document.documentElement.outerHTML)},1e4);"})
 
-                                     'var src = '';
+                                     'SRC = '';
 
-                                     'function SetAndFire() {
-                                     '    src = document.documentElement.outerHTML;
-                                     '    var DOMContentLoaded_event = document.createEvent('Event');
-                                     '    DOMContentLoaded_event.initEvent('DOMContentLoaded', true, true);
-                                     '    window.document.dispatchEvent(DOMContentLoaded_event);
+                                     'function SetSRC() {
+                                     '    SRC = document.documentElement.outerHTML;
                                      '};
 
                                      'function RemoveVideos() {
@@ -115,8 +113,12 @@ Public Class Browser
 
                                      'if (window.addEventListener) {
                                      '    window.addEventListener('DOMContentLoaded', RemoveVideos, false);
-                                     '    window.addEventListener("load", SetAndFire, false);
+                                     '    window.addEventListener("load", SetSRC, false);
                                      '};
+
+                                     'setTimeout(function() {
+                                     '    jsOBJ.SendSRC(document.documentElement.outerHTML);
+                                     '}, 10000);
 
                                  End Function)
     End Sub
@@ -142,11 +144,22 @@ Public Class Browser
 
         AddHandler View.DocumentReady, Sub(s, e)
                                            If Not RenderingDone Then
-                                               RenderedHTML = View.ExecuteJavascriptWithResult("src").ToString
+                                               RenderedHTML = View.ExecuteJavascriptWithResult("SRC").ToString
                                                If Not String.IsNullOrEmpty(RenderedHTML) Then
                                                    Debug.WriteLine("SRC READY: " + View.Source.ToString)
                                                    RenderingDone = True
                                                End If
+                                           End If
+                                           If IsNothing(jsOBJ) Then
+                                               jsOBJ = View.CreateGlobalJavascriptObject("jsOBJ")
+                                               jsOBJ.BindAsync(
+                                                   "SendSRC", Sub(sen, eve)
+                                                                  If Not RenderingDone Then
+                                                                      RenderedHTML = eve.Arguments(0).ToString
+                                                                      Debug.WriteLine("SRC READY: " + View.Source.ToString)
+                                                                      RenderingDone = True
+                                                                  End If
+                                                              End Sub)
                                            End If
                                        End Sub
 
@@ -235,6 +248,8 @@ Public Class Browser
                                    End If
                                    Return Nothing
                                End Function)
+                jsOBJ.Dispose()
+                jsOBJ = Nothing
             End If
             RenderedHTML = Nothing
             RenderingDone = Nothing
