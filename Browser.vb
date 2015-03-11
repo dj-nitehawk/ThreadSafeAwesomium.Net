@@ -24,9 +24,9 @@ Public Class Browser
 
     Private Shared Thread As Threading.Thread
     Private Shared CoreIsRunning As Boolean = False
+    Private Shared Session As WebSession
     Dim RenderedHTML As String = ""
     Dim RenderingDone As Boolean = False
-    Dim Session As WebSession
     Dim View As WebView
     Dim jsOBJ As JSObject
 
@@ -46,6 +46,14 @@ Public Class Browser
     ''' Once, shutdown, app restart is needed to use WebCore again.
     ''' </summary>
     Shared Sub StopWebCore()
+        If Not IsNothing(Session) Then
+            WebCore.DoWork(
+                Function()
+                    Session.Dispose()
+                    Session = Nothing
+                    Return Nothing
+                End Function)
+        End If
         WebCore.Shutdown()
         Thread = Nothing
         CoreIsRunning = False
@@ -72,55 +80,51 @@ Public Class Browser
     ''' </summary>
     Sub New()
         StartWebCore()
-        SetNewSession()
+        InitSession()
         SetNewView()
     End Sub
 
-    Private Sub SetNewSession()
-        If Not IsNothing(Session) Then
-            WebCore.DoWork(Function()
-                               If Not IsNothing(Session) Then
-                                   Session.Dispose()
-                               End If
-                               Return Nothing
-                           End Function)
-            Session = Nothing
+    Private Shared Sub InitSession()
+        If IsNothing(Session) Then
+            Session = WebCore.DoWork(
+                Function() As WebSession
+                    Return WebCore.CreateWebSession(
+                        New WebPreferences With {
+                            .LoadImagesAutomatically = False,
+                            .LocalStorage = False,
+                            .Plugins = False,
+                            .RemoteFonts = False,
+                            .WebAudio = False,
+                            .CanScriptsOpenWindows = False,
+                            .DefaultEncoding = "utf-8",
+                            .MaxHttpCacheStorage = 64000000,
+                            .UserScript = "function SetSRC(){SRC=document.documentElement.outerHTML}function RemoveVideos(){var e=document.getElementsByTagName('video');for(index=e.length-1;index>=0;index--)e[index].parentNode.removeChild(e[index])}SRC='',window.addEventListener&&(window.addEventListener('DOMContentLoaded',RemoveVideos,!1),window.addEventListener('load',SetSRC,!1)),setTimeout(function(){jsOBJ.SendSRC(document.documentElement.outerHTML)},1e4);"})
+
+                    'SRC = '';
+
+                    'function SetSRC() {
+                    '    SRC = document.documentElement.outerHTML;
+                    '};
+
+                    'function RemoveVideos() {
+                    '    var element = document.getElementsByTagName('video');
+                    '    for (index = element.length - 1; index >= 0; index--) {
+                    '        element[index].parentNode.removeChild(element[index]);
+                    '    };
+                    '};
+
+                    'if (window.addEventListener) {
+                    '    window.addEventListener('DOMContentLoaded', RemoveVideos, false);
+                    '    window.addEventListener("load", SetSRC, false);
+                    '};
+
+                    'setTimeout(function() {
+                    '    jsOBJ.SendSRC(document.documentElement.outerHTML);
+                    '}, 10000);
+
+                End Function)
         End If
-        Session = WebCore.DoWork(Function() As WebSession
-                                     Return WebCore.CreateWebSession(
-                                         New WebPreferences With {
-                                             .LoadImagesAutomatically = False,
-                                             .LocalStorage = False,
-                                             .Plugins = False,
-                                             .RemoteFonts = False,
-                                             .WebAudio = False,
-                                             .CanScriptsOpenWindows = False,
-                                             .DefaultEncoding = "utf-8",
-                                             .UserScript = "function SetSRC(){SRC=document.documentElement.outerHTML}function RemoveVideos(){var e=document.getElementsByTagName('video');for(index=e.length-1;index>=0;index--)e[index].parentNode.removeChild(e[index])}SRC='',window.addEventListener&&(window.addEventListener('DOMContentLoaded',RemoveVideos,!1),window.addEventListener('load',SetSRC,!1)),setTimeout(function(){jsOBJ.SendSRC(document.documentElement.outerHTML)},1e4);"})
 
-                                     'SRC = '';
-
-                                     'function SetSRC() {
-                                     '    SRC = document.documentElement.outerHTML;
-                                     '};
-
-                                     'function RemoveVideos() {
-                                     '    var element = document.getElementsByTagName('video');
-                                     '    for (index = element.length - 1; index >= 0; index--) {
-                                     '        element[index].parentNode.removeChild(element[index]);
-                                     '    };
-                                     '};
-
-                                     'if (window.addEventListener) {
-                                     '    window.addEventListener('DOMContentLoaded', RemoveVideos, false);
-                                     '    window.addEventListener("load", SetSRC, false);
-                                     '};
-
-                                     'setTimeout(function() {
-                                     '    jsOBJ.SendSRC(document.documentElement.outerHTML);
-                                     '}, 10000);
-
-                                 End Function)
     End Sub
 
     Private Sub SetNewView()
@@ -231,25 +235,16 @@ Public Class Browser
             If disposing Then
                 RemoveHandler View.LoadingFrameFailed, Nothing
                 RemoveHandler View.DocumentReady, Nothing
-                WebCore.DoWork(Function()
-                                   If Not IsNothing(View) Then
-                                       View.Dispose()
-                                       Do Until View.IsDisposed
-                                           Task.Delay(100).Wait()
-                                       Loop
-                                       View = Nothing
-                                   End If
-                                   Return Nothing
-                               End Function)
-                WebCore.DoWork(Function()
-                                   If Not IsNothing(Session) Then
-                                       Session.Dispose()
-                                       Session = Nothing
-                                   End If
-                                   Return Nothing
-                               End Function)
-                jsOBJ.Dispose()
-                jsOBJ = Nothing
+                WebCore.QueueWork(Sub()
+                                      If Not IsNothing(View) Then
+                                          View.Dispose()
+                                          View = Nothing
+                                      End If
+                                      If Not IsNothing(jsOBJ) Then
+                                          jsOBJ.Dispose()
+                                          jsOBJ = Nothing
+                                      End If
+                                  End Sub)
             End If
             RenderedHTML = Nothing
             RenderingDone = Nothing
