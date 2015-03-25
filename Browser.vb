@@ -1,4 +1,4 @@
-﻿Imports Awesomium.Core
+Imports Awesomium.Core
 'Imports HtmlAgilityPack
 
 Public Class Browser
@@ -18,6 +18,7 @@ Public Class Browser
             request.AppendExtraHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
             request.AppendExtraHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.111 Safari/537.36")
             request.AppendExtraHeader("Accept-Language", "en-US,en;q=0.8")
+            'request.AppendExtraHeader("X-Forwarded-For", "137.135.166.225")
             Return Nothing
         End Function
     End Class
@@ -147,14 +148,8 @@ Public Class Browser
                               End Function)
 
         AddHandler View.DocumentReady, Sub(s, e)
-                                           If Not RenderingDone Then
-                                               RenderedHTML = View.ExecuteJavascriptWithResult("SRC").ToString
-                                               If Not String.IsNullOrEmpty(RenderedHTML) Then
-                                                   Debug.WriteLine("SRC READY: " + View.Source.ToString)
-                                                   RenderingDone = True
-                                               End If
-                                           End If
                                            If IsNothing(jsOBJ) Then
+                                               View.SynchronousMessageTimeout = 3000
                                                jsOBJ = View.CreateGlobalJavascriptObject("jsOBJ")
                                                jsOBJ.BindAsync(
                                                    "SendSRC", Sub(sen, eve)
@@ -164,6 +159,13 @@ Public Class Browser
                                                                       RenderingDone = True
                                                                   End If
                                                               End Sub)
+                                           End If
+                                           If RenderingDone = False And View.IsDocumentReady = True Then
+                                               RenderedHTML = View.ExecuteJavascriptWithResult("SRC").ToString
+                                               If Not String.IsNullOrEmpty(RenderedHTML) Then
+                                                   Debug.WriteLine("SRC READY: " + View.Source.ToString)
+                                                   RenderingDone = True
+                                               End If
                                            End If
                                        End Sub
 
