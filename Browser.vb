@@ -18,7 +18,6 @@ Public Class Browser
             request.AppendExtraHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
             request.AppendExtraHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.111 Safari/537.36")
             request.AppendExtraHeader("Accept-Language", "en-US,en;q=0.8")
-            'request.AppendExtraHeader("X-Forwarded-For", "137.135.166.225")
             Return Nothing
         End Function
     End Class
